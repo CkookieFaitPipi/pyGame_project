@@ -1,68 +1,64 @@
-import os
+import pygame
 import random
 import sys
 
-import pygame
-
 pygame.init()
-pygame.key.set_repeat(200, 70)
-size = WIDTH, HEIGHT = 1000, 1000
-screen = pygame.display.set_mode(size)
-pygame.display.set_caption('CosmoTrip')
+screen_width = 1000
+screen_height = 1000
+ssize = (1000, 1000)
+screen = pygame.display.set_mode(ssize)
+pygame.display.set_caption("CosmoTrip")
 clock = pygame.time.Clock()
-FPS = 50
-all_sprites = pygame.sprite.Group()
-meteors_group = pygame.sprite.Group()
-player_group = pygame.sprite.Group()
-player = None
 
+widht = 140
+height = 140
+px = 500 - (widht // 2)
+py = ssize[1] - 20 - widht
+speed = 10
+FPS = 60
 
-def load_image(name, colorkey=None):
-    fullname = os.path.join('data', name)
-    if not os.path.isfile(fullname):
-        print(f"Файл с изображением '{fullname}' не найден")
-        sys.exit()
-    image = pygame.image.load(fullname)
-    if colorkey is not None:
-        image = image.convert()
-        if colorkey == -1:
-            colorkey = image.get_at((0, 0))
-        image.set_colorkey(colorkey)
-    else:
-        image = image.convert_alpha()
-    return image
+global xspeed
+xspeed = 1
 
+fon = pygame.transform.scale(pygame.image.load('fon1.jpg'), (2000, 1000))
+fonr = fon.get_rect()
 
-player_image = load_image('player.png')
+laser = pygame.transform.scale(pygame.image.load('glaser.png'), (10, 33))
+
+player_image = pygame.transform.scale(pygame.image.load('player1.png'), (widht, height))
+
+pygame.display.set_icon(player_image)
 
 
 def start_screen():
-    intro_text = ["Правила игры:",
-                  'Есть 3 уровня']
-
-    fon = pygame.transform.scale(load_image('fon.png'), (WIDTH, HEIGHT))
+    global score
+    score = 0
+    global run
+    run = True
+    with open('score.txt', 'r') as bscore:
+        line = bscore.readlines()
+        best_score = line[-1]
+    fon = pygame.transform.scale(pygame.image.load('fon1.jpg'), (2000, 1000))
     screen.blit(fon, (0, 0))
-    font = pygame.font.Font(None, 30)
-    text_coord = 50
-    for line in intro_text:
-        string_rendered = font.render(line, 1, pygame.Color('white'))
-        intro_rect = string_rendered.get_rect()
-        text_coord += 10
-        intro_rect.top = text_coord
-        intro_rect.x = 10
-        text_coord += intro_rect.height
-        screen.blit(string_rendered, intro_rect)
-
-    while True:
-        for event in pygame.event.get():
+    font = pygame.font.Font('Minecraft.ttf', 100)
+    name = 'CosmotriP'
+    string_rendered = font.render(name, 0, pygame.Color('white'))
+    intro_rect = string_rendered.get_rect()
+    intro_rect.centerx = screen_width / 2
+    intro_rect.top = 200
+    screen.blit(string_rendered, intro_rect)
+    draw_text(screen, 'Level', 50, 500, 400)
+    draw_text(screen, f'Best score: {best_score}', 40, 800, 40)
+    while run:
+        clock.tick(FPS)
+        event_list = pygame.event.get()
+        for event in event_list:
             if event.type == pygame.QUIT:
                 terminate()
-            elif event.type == pygame.KEYDOWN or \
-                    event.type == pygame.MOUSEBUTTONDOWN:
 
-                return  # начинаем игру
+        group.update(event_list)
+        group.draw(screen)
         pygame.display.flip()
-        clock.tick(FPS)
 
 
 def terminate():
@@ -70,75 +66,178 @@ def terminate():
     sys.exit()
 
 
-class Player(pygame.sprite.Sprite):
-    def __init__(self, pos_x, pos_y):
-        super().__init__(player_group, all_sprites)
-        self.image = player_image
-#       self.rect = self.image.get_rect().move()
-        self.pos = (pos_x, pos_y)
+def draw_text(surf, text, size, x, y):
+    fontt = pygame.font.Font('Minecraft.ttf', size)
+    text_surface = fontt.render(text, True, (255, 255, 255))
+    text_rect = text_surface.get_rect()
+    text_rect.midtop = (x, y)
+    surf.blit(text_surface, text_rect)
 
-    def move(self, x, y):
+
+class Hard_quality(pygame.sprite.Sprite):
+    def __init__(self, x, y, w, font, text):
+        super().__init__()
+        self.color = (255, 255, 255)
+        self.backcolor = (50, 50, 50)
         self.pos = (x, y)
-#       self.rect = self.image.get_rect().move()
+        self.width = w
+        self.font = font
+        self.text = text
+        self.render_text()
+
+    def render_text(self):
+        t_surf = self.font.render(self.text, True, self.color, self.backcolor)
+        self.image = pygame.Surface((max(self.width, t_surf.get_width() + 10), t_surf.get_height() + 10),
+                                    pygame.SRCALPHA)
+        if self.backcolor:
+            self.image.fill(self.backcolor)
+        self.image.blit(t_surf, (150, 10))
+        pygame.draw.rect(self.image, self.color, self.image.get_rect().inflate(-2, -2), 2)
+        self.rect = self.image.get_rect(topleft=self.pos)
+
+    def update(self, event_list):
+        global xspeed
+        global run
+        for event in event_list:
+            if event.type == pygame.MOUSEBUTTONDOWN and 300 < event.pos[0] < 700 and 550 < event.pos[1] < 600:
+                xspeed = 1
+                run = False
+            elif event.type == pygame.MOUSEBUTTONDOWN and 300 < event.pos[0] < 700 and 650 < event.pos[1] < 700:
+                xspeed = 1.5
+                run = False
+            elif event.type == pygame.MOUSEBUTTONDOWN and 300 < event.pos[0] < 700 and 750 < event.pos[1] < 800:
+                xspeed = 2
+                run = False
 
 
-def load_level(filename):
-    filename = "data/" + filename
-    # читаем уровень, убирая символы перевода строки
-    with open(filename, 'r') as mapFile:
-        level_map = [line.strip() for line in mapFile]
+class Player(pygame.sprite.Sprite):
+    global coords
 
-    # и подсчитываем максимальную длину
-    max_width = max(map(len, level_map))
+    def __init__(self):
+        pygame.sprite.Sprite.__init__(self)
+        self.image = player_image
+        self.rect = self.image.get_rect()
+        self.rect.topleft = (px, py)
 
-    # дополняем каждую строку пустыми клетками ('.')
-    return list(map(lambda x: x.ljust(max_width, '.'), level_map))
+    def update(self):
+        self.speedx = 10
+        keys = pygame.key.get_pressed()
+        if keys[pygame.K_LEFT]:
+            self.rect.x -= self.speedx
+        if keys[pygame.K_RIGHT]:
+            self.rect.x += self.speedx
+        if self.rect.right > ssize[0]:
+            self.rect.right = ssize[0]
+        if self.rect.left < 0:
+            self.rect.left = 0
+
+    def shoot(self):
+        bullet = Laser(self.rect.centerx, self.rect.top)
+        all_sprites.add(bullet)
+        bullets.add(bullet)
+
+    def move(self):
+        self.rect = self.image.get_rect().move(px, py)
 
 
-def move(hero, movement):
-    x, y = hero.pos
-    if movement == 'left':
-        if x > 0 and level_map[y][x - 1] != '#':
-            hero.move(x - 1, y)
-    if movement == 'right':
-        if x < level_x - 1 and level_map[y][x + 1] != '#':
-            hero.move(x + 1, y)
+class Laser(pygame.sprite.Sprite):
+    def __init__(self, x, y):
+        pygame.sprite.Sprite.__init__(self)
+        self.image = laser
+        self.rect = self.image.get_rect()
+
+        self.rect.bottom = y
+        self.rect.centerx = x
+        self.speedy = -10
+
+    def update(self):
+        self.rect.y += self.speedy
+        if self.rect.bottom < 0:
+            self.kill()
 
 
-def generate_level(level):
-    new_player, x, y = None, None, None
+class Meteor(pygame.sprite.Sprite):
+    def __init__(self):
+        pygame.sprite.Sprite.__init__(self)
+        self.ma = random.randint(45, 100)
+        self.meteor_size = (self.ma, self.ma * 0.9)
+        self.meteor = pygame.transform.scale(pygame.image.load('meteor.png'), self.meteor_size)
+        self.image = self.meteor
+        self.rect = self.image.get_rect()
+        self.rect.x = random.randrange(ssize[0] - self.rect.width)
+        self.rect.y = random.randrange(-100, -40)
+        self.speedy = (random.randrange(1, 8) * xspeed)
+        self.speedx = (random.randrange(-3, 3))
 
-    x = level_x / 2
-    return new_player, x, y
+    def update(self):
+        self.rect.x += self.speedx
+        self.rect.y += self.speedy
+        if self.rect.top > ssize[1] + 10 or self.rect.left < -100 or self.rect.right > ssize[0] + 100:
+            self.rect.x = random.randrange(ssize[0] - self.rect.width)
+            self.rect.y = random.randrange(-100, -40)
+            self.speedy = (random.randrange(1, 8) * xspeed)
 
 
-class Border(pygame.sprite.Sprite):
-    # строго вертикальный или строго горизонтальный отрезок
-    def __init__(self, x1, y1, x2, y2):
-        super().__init__(all_sprites)
-        if x1 == x2:  # вертикальная стенка
-            self.add(vertical_borders)
-            self.image = pygame.Surface([1, y2 - y1])
-            self.rect = pygame.Rect(x1, y1, 1, y2 - y1)
+font = pygame.font.Font('Minecraft.ttf', 40)
+easy = Hard_quality(300, 550, 400, font, 'EASY')
+normal = Hard_quality(300, 650, 400, font, "NORMAL")
+hard = Hard_quality(300, 750, 400, font, 'HARD')
 
-vertical_borders = pygame.sprite.Group()
+group = pygame.sprite.Group(easy, normal, hard)
 
+meteors = pygame.sprite.Group()
+all_sprites = pygame.sprite.Group()
+bullets = pygame.sprite.Group()
+player = Player()
+all_sprites.add(player)
 start_screen()
 
-running = True
+for i in range(8):
+    m = Meteor()
+    all_sprites.add(m)
+    meteors.add(m)
 
+running = True
 while running:
-    clock.tick(100)
-    all_sprites.update()
+    clock.tick(FPS)
+    global score
+    global rect
+    score += round(2 * xspeed)
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
         elif event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_LEFT:
-                move(player, 'left')
-            if event.key == pygame.K_RIGHT:
-                move(player, 'right')
-    screen.fill(pygame.Color("white"))
+            if event.key == pygame.K_SPACE:
+                player.shoot()
+    all_sprites.update()
+
+    hits = pygame.sprite.groupcollide(meteors, bullets, True, True)
+    for hit in hits:
+        m = Meteor()
+        all_sprites.add(m)
+        meteors.add(m)
+
+    hits = pygame.sprite.spritecollide(player, meteors, False)
+    if hits:
+        player.move()
+        with open('score.txt', 'r') as bscore:
+            line = bscore.readlines()
+            if int(line[-1]) < score:
+                with open('score.txt', 'w') as rscore:
+                    rscore.write(str(score))
+
+        start_screen()
+        score = 0
+
+        for m in meteors:
+            m.kill()
+            m = Meteor()
+            all_sprites.add(m)
+            meteors.add(m)
+
+    screen.fill((0, 0, 0))
+    screen.blit(fon, fonr)
+    all_sprites.draw(screen)
+    draw_text(screen, str(score), 30, 800, 10)
     pygame.display.flip()
 
-terminate()
