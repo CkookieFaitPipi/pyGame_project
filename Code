@@ -1,6 +1,8 @@
 import pygame
 import random
 import sys
+import os
+
 
 pygame.init()
 screen_width = 1000
@@ -17,15 +19,37 @@ py = ssize[1] - 20 - widht
 speed = 10
 FPS = 60
 
+
+def load_image(name, colorkey=(255, 255, 255)):
+    fullname = f'data/{name}'
+    # если файл не существует, то выходим
+    if not os.path.isfile(fullname):
+        print(f"Файл с изображением '{fullname}' не найден")
+        sys.exit()
+    image = pygame.image.load(fullname)
+    if colorkey is not None:
+        image = image.convert()
+        if colorkey == -1:
+            colorkey = image.get_at((0, 0))
+        image.set_colorkey(colorkey)
+    else:
+        image = image.convert_alpha()
+    return image
+
+
+explose = [load_image('explose1.jpg'), load_image('explose2.jpg'),
+           load_image('explose3.jpg'), load_image('explose4.jpg'),
+           load_image('explose5.jpg'), load_image('explose6.jpg')]
+
 global xspeed
 xspeed = 1
 
-fon = pygame.transform.scale(pygame.image.load('fon1.jpg'), (2000, 1000))
+fon = pygame.transform.scale(pygame.image.load('data/fon1.jpg'), (2000, 1000))
 fonr = fon.get_rect()
 
-laser = pygame.transform.scale(pygame.image.load('glaser.png'), (10, 33))
+laser = pygame.transform.scale(pygame.image.load('data/glaser.png'), (10, 33))
 
-player_image = pygame.transform.scale(pygame.image.load('player1.png'), (widht, height))
+player_image = pygame.transform.scale(pygame.image.load('data/player1.png'), (widht, height))
 
 pygame.display.set_icon(player_image)
 
@@ -35,12 +59,12 @@ def start_screen():
     score = 0
     global run
     run = True
-    with open('score.txt', 'r') as bscore:
+    with open('data/score.txt', 'r') as bscore:
         line = bscore.readlines()
         best_score = line[-1]
-    fon = pygame.transform.scale(pygame.image.load('fon1.jpg'), (2000, 1000))
+    fon = pygame.transform.scale(pygame.image.load('data/fon1.jpg'), (2000, 1000))
     screen.blit(fon, (0, 0))
-    font = pygame.font.Font('Minecraft.ttf', 100)
+    font = pygame.font.Font('data/Minecraft.ttf', 100)
     name = 'CosmotriP'
     string_rendered = font.render(name, 0, pygame.Color('white'))
     intro_rect = string_rendered.get_rect()
@@ -67,7 +91,7 @@ def terminate():
 
 
 def draw_text(surf, text, size, x, y):
-    fontt = pygame.font.Font('Minecraft.ttf', size)
+    fontt = pygame.font.Font('data/Minecraft.ttf', size)
     text_surface = fontt.render(text, True, (255, 255, 255))
     text_rect = text_surface.get_rect()
     text_rect.midtop = (x, y)
@@ -134,7 +158,7 @@ class Player(pygame.sprite.Sprite):
     def shoot(self):
         bullet = Laser(self.rect.centerx, self.rect.top)
         all_sprites.add(bullet)
-        bullets.add(bullet)
+        lasers.add(bullet)
 
     def move(self):
         self.rect = self.image.get_rect().move(px, py)
@@ -161,7 +185,7 @@ class Meteor(pygame.sprite.Sprite):
         pygame.sprite.Sprite.__init__(self)
         self.ma = random.randint(45, 100)
         self.meteor_size = (self.ma, self.ma * 0.9)
-        self.meteor = pygame.transform.scale(pygame.image.load('meteor.png'), self.meteor_size)
+        self.meteor = pygame.transform.scale(pygame.image.load('data/meteor.png'), self.meteor_size)
         self.image = self.meteor
         self.rect = self.image.get_rect()
         self.rect.x = random.randrange(ssize[0] - self.rect.width)
@@ -177,17 +201,48 @@ class Meteor(pygame.sprite.Sprite):
             self.rect.y = random.randrange(-100, -40)
             self.speedy = (random.randrange(1, 8) * xspeed)
 
+class Explosion(pygame.sprite.Sprite):
+    def __init__(self, center, size):
+        pygame.sprite.Sprite.__init__(self)
+        self.size = size
+        self.image = explosion_anim[self.size][0]
+        self.rect = self.image.get_rect()
+        self.rect.center = center
+        self.frame = 0
+        self.last_update = pygame.time.get_ticks()
+        self.frame_rate = 50
 
-font = pygame.font.Font('Minecraft.ttf', 40)
+    def update(self):
+        now = pygame.time.get_ticks()
+        if now - self.last_update > self.frame_rate:
+            self.last_update = now
+            self.frame += 1
+            if self.frame == len(explosion_anim[self.size]):
+                self.kill()
+            else:
+                center = self.rect.center
+                self.image = explosion_anim[self.size][self.frame]
+                self.rect = self.image.get_rect()
+                self.rect.center = center
+
+
+font = pygame.font.Font('data/Minecraft.ttf', 40)
 easy = Hard_quality(300, 550, 400, font, 'EASY')
 normal = Hard_quality(300, 650, 400, font, "NORMAL")
 hard = Hard_quality(300, 750, 400, font, 'HARD')
-
+explosion_anim = {}
+explosion_anim['lg'] = []
+for i in range(6):
+    i += 1
+    filename = 'regularExplosion0{}.png'.format(i)
+    img = load_image(f'explose{i}.jpg').convert()
+    img_lg = pygame.transform.scale(img, (75, 75))
+    explosion_anim['lg'].append(img_lg)
 group = pygame.sprite.Group(easy, normal, hard)
 
 meteors = pygame.sprite.Group()
 all_sprites = pygame.sprite.Group()
-bullets = pygame.sprite.Group()
+lasers = pygame.sprite.Group()
 player = Player()
 all_sprites.add(player)
 start_screen()
@@ -201,7 +256,6 @@ running = True
 while running:
     clock.tick(FPS)
     global score
-    global rect
     score += round(2 * xspeed)
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
@@ -211,8 +265,11 @@ while running:
                 player.shoot()
     all_sprites.update()
 
-    hits = pygame.sprite.groupcollide(meteors, bullets, True, True)
+    hits = pygame.sprite.groupcollide(meteors, lasers, True, True)
     for hit in hits:
+        score += 100
+        expl = Explosion(hit.rect.center, 'lg')
+        all_sprites.add(expl)
         m = Meteor()
         all_sprites.add(m)
         meteors.add(m)
@@ -220,10 +277,10 @@ while running:
     hits = pygame.sprite.spritecollide(player, meteors, False)
     if hits:
         player.move()
-        with open('score.txt', 'r') as bscore:
+        with open('data/score.txt', 'r') as bscore:
             line = bscore.readlines()
             if int(line[-1]) < score:
-                with open('score.txt', 'w') as rscore:
+                with open('data/score.txt', 'w') as rscore:
                     rscore.write(str(score))
 
         start_screen()
@@ -234,10 +291,12 @@ while running:
             m = Meteor()
             all_sprites.add(m)
             meteors.add(m)
+        for j in lasers:
+            j.kill()
+
 
     screen.fill((0, 0, 0))
     screen.blit(fon, fonr)
     all_sprites.draw(screen)
     draw_text(screen, str(score), 30, 800, 10)
     pygame.display.flip()
-
