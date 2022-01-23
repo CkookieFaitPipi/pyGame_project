@@ -71,7 +71,7 @@ def start_screen():
     intro_rect.centerx = screen_width / 2
     intro_rect.top = 200
     screen.blit(string_rendered, intro_rect)
-    draw_text(screen, 'Level', 50, 500, 400)
+    draw_text(screen, 'Choose Level', 50, 500, 400)
     draw_text(screen, f'Best score: {best_score}', 40, 800, 40)
     while run:
         clock.tick(FPS)
